@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+    <title>FourColorsMP</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+        .iframe-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            height: 100%;
+            width: 100%;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .dev-mode {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            width: 300px;
+            max-height: 80%;
+            overflow-y: auto;
+            display: none;
+            font-size: 12px;
+        }
+
+        .console-log {
+            background: #222;
+            color: white;
+            padding: 5px;
+            margin: 5px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="iframe-container">
+        <iframe id="iframe1" src=""></iframe>
+        <div id="devModeConsole" class="dev-mode">
+            <h3>Dev Mode Console</h3>
+            <div id="consoleLogs" class="console-log"></div>
+            <h4>Current Links:</h4>
+            <ul id="iframeLinks"></ul>
+        </div>
+    </div>
+
+    <script>
+        const defaultUrl = "https://html5.gamedistribution.com/f2520bae00624e93a4f4614732fa259e/";
+
+        // Base64 encode a string twice
+        function doubleEncode(input) {
+            return btoa(btoa(input));
+        }
+
+        // Base64 decode a string twice
+        function doubleDecode(input) {
+            try {
+                return atob(atob(input));
+            } catch (e) {
+                return null; // Invalid encoding
+            }
+        }
+
+        // Validate if a string is double Base64 encoded
+        function isDoubleBase64(input) {
+            const firstDecode = atob(input || "", true);
+            if (!firstDecode) return false; // First decode failed
+            try {
+                atob(firstDecode); // Second decode check
+                return true;
+            } catch (e) {
+                return false; // Second decode failed
+            }
+        }
+
+        // Log messages to the Dev Mode console
+        function logToConsole(message) {
+            const consoleLogs = document.getElementById("consoleLogs");
+            const logMessage = document.createElement("div");
+            logMessage.textContent = message;
+            consoleLogs.appendChild(logMessage);
+            consoleLogs.scrollTop = consoleLogs.scrollHeight;
+        }
+
+        // Load URL into the iframe
+        function loadUrlInIframe(url) {
+            const iframe = document.getElementById("iframe1");
+            iframe.src = url;
+        }
+
+        // Handle query string ?url=...
+        function handleQueryString() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const encodedUrl = urlParams.get("url");
+
+            if (encodedUrl) {
+                if (isDoubleBase64(encodedUrl)) {
+                    const decodedUrl = doubleDecode(encodedUrl);
+                    logToConsole("Decoded URL: " + decodedUrl);
+                    loadUrlInIframe(decodedUrl);
+                } else {
+                    logToConsole("Invalid URL parameter. Falling back to default URL.");
+                    loadUrlInIframe(defaultUrl);
+                }
+            } else {
+                logToConsole("No URL parameter. Loading default URL.");
+                loadUrlInIframe(defaultUrl);
+            }
+        }
+
+        // Initialize the page
+        handleQueryString();
+
+        // Handle iframe load and update Dev Mode if enabled
+        document.getElementById("iframe1").addEventListener("load", () => {
+            logToConsole("Iframe loaded.");
+        });
+    </script>
+</body>
+</html>

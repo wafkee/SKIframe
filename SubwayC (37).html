@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+    <title>Iframe Browser</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+        .url-bar {
+            display: flex;
+            padding: 10px;
+            background-color: #333;
+            color: white;
+            align-items: center;
+        }
+
+        .url-bar input {
+            width: 80%;
+            padding: 5px;
+            margin-right: 10px;
+            border-radius: 5px;
+            border: none;
+        }
+
+        .url-bar button {
+            padding: 5px 10px;
+            background-color: #555;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .dev-mode-toggle {
+            padding: 10px;
+            margin-left: 10px;
+            cursor: pointer;
+            background-color: #666;
+            border: none;
+            color: white;
+            border-radius: 5px;
+        }
+
+        .iframe-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        iframe {
+            width: 80%;
+            height: 80%;
+            border: none;
+            border-radius: 10px;
+        }
+
+        .dev-mode {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            width: 300px;
+            max-height: 80%;
+            overflow-y: auto;
+            display: none;
+            font-size: 12px;
+        }
+
+        .console-log {
+            background: #222;
+            color: white;
+            padding: 5px;
+            margin: 5px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="url-bar">
+        <input type="text" id="urlInput" placeholder="Enter a URL..." />
+        <button id="loadUrlButton">Go</button>
+        <button id="devModeToggle" class="dev-mode-toggle">Dev Mode</button>
+    </div>
+
+    <div class="iframe-container">
+        <iframe id="iframe1" src=""></iframe>
+        <div id="devModeConsole" class="dev-mode">
+            <h3>Dev Mode Console</h3>
+            <div id="consoleLogs" class="console-log"></div>
+            <h4>Current Links:</h4>
+            <ul id="iframeLinks"></ul>
+        </div>
+    </div>
+
+    <script>
+        let devModeEnabled = false;
+
+        // Toggle Dev Mode
+        document.getElementById('devModeToggle').addEventListener('click', () => {
+            devModeEnabled = !devModeEnabled;
+            const devModeConsole = document.getElementById('devModeConsole');
+            devModeConsole.style.display = devModeEnabled ? 'block' : 'none';
+            if (devModeEnabled) {
+                logToConsole('Dev Mode enabled.');
+                updateIframeLinks();
+            } else {
+                logToConsole('Dev Mode disabled.');
+            }
+        });
+
+        // Log messages to the Dev Mode console
+        function logToConsole(message) {
+            const consoleLogs = document.getElementById('consoleLogs');
+            const logMessage = document.createElement('div');
+            logMessage.textContent = message;
+            consoleLogs.appendChild(logMessage);
+            consoleLogs.scrollTop = consoleLogs.scrollHeight;
+        }
+
+        // Update the list of links in the iframe
+        function updateIframeLinks() {
+            const iframe = document.getElementById('iframe1');
+            const linksList = document.getElementById('iframeLinks');
+            linksList.innerHTML = ''; // Clear the existing list
+
+            try {
+                const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+                const links = iframeDocument.querySelectorAll('a');
+
+                links.forEach((link) => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = link.href;
+                    linksList.appendChild(listItem);
+                });
+
+                if (links.length === 0) {
+                    logToConsole('No links found in the iframe.');
+                } else {
+                    logToConsole(`${links.length} link(s) found.`);
+                }
+            } catch (error) {
+                logToConsole('Error accessing iframe content: ' + error.message);
+            }
+        }
+
+        // Load URL into the iframe
+        function loadUrlInIframe(url) {
+            const iframe = document.getElementById('iframe1');
+            iframe.src = url;
+
+            // Update the browser address bar
+            const encodedUrl = encodeURIComponent(url);
+            const newUrl = `${window.location.pathname}?URL=${encodedUrl}`;
+            window.history.pushState({ path: newUrl }, '', newUrl);
+        }
+
+        // Handle query string ?URL=...
+        function handleQueryString() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const url = urlParams.get('URL');
+            if (url) {
+                const decodedUrl = decodeURIComponent(url);
+                document.getElementById('urlInput').value = decodedUrl;
+                loadUrlInIframe(decodedUrl);
+            }
+        }
+
+        // Add event listener for "Go" button
+        document.getElementById('loadUrlButton').addEventListener('click', () => {
+            const url = document.getElementById('urlInput').value;
+            if (url) {
+                loadUrlInIframe(url);
+            }
+        });
+
+        // Add event listener for Enter key
+        document.getElementById('urlInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const url = document.getElementById('urlInput').value;
+                if (url) {
+                    loadUrlInIframe(url);
+                }
+            }
+        });
+
+        // Handle iframe load and update Dev Mode if enabled
+        document.getElementById('iframe1').addEventListener('load', () => {
+            if (devModeEnabled) {
+                updateIframeLinks();
+            }
+        });
+
+        // Initialize the page by handling any query string parameters
+        handleQueryString();
+    </script>
+</body>
+</html>
+
+

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Steam Clone</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #121212;
+            color: #fff;
+        }
+
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #121212;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 20px;
+            z-index: 10;
+        }
+
+        #logo-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #121212;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            animation: fadeIn 2s forwards;
+            z-index: 9;
+        }
+
+        #logo-screen img {
+            max-width: 300px;
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
+        #app {
+            padding: 20px;
+            display: none;
+            animation: fadeIn 2s forwards;
+        }
+
+        .game-card {
+            display: inline-block;
+            width: 200px;
+            margin: 10px;
+            text-align: center;
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .game-card img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+        }
+
+        .game-card h3 {
+            font-size: 16px;
+            margin: 10px 0;
+        }
+
+        .delete-button {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: #ff4d4d;
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #iframe-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        #pause-menu {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+        }
+
+        #pause-button {
+            background-color: #ff5722;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        iframe {
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        #console {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 150px;
+            background-color: #1e1e1e;
+            color: #fff;
+            overflow-y: auto;
+            font-size: 14px;
+            border-top: 1px solid #333;
+            display: none;
+        }
+
+        #console pre {
+            margin: 0;
+            padding: 10px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        #toggle-console {
+            position: fixed;
+            bottom: 160px;
+            right: 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-screen">Checking connection...</div>
+    <div id="logo-screen">
+        <img src="http://cdn.cockium.cf/chr/test.png" alt="Logo">
+    </div>
+    <div id="app">
+        <h1>Local Steam Clone</h1>
+        <input type="file" id="filePicker" accept=".html" />
+        <div id="game-list"></div>
+    </div>
+
+    <div id="iframe-container">
+        <div id="pause-menu">
+            <button id="pause-button">Main Menu</button>
+        </div>
+        <iframe id="game-iframe"></iframe>
+    </div>
+
+    <button id="toggle-console">Toggle Console</button>
+    <div id="console">
+        <pre id="console-output"></pre>
+    </div>
+
+    <script>
+        const filePicker = document.getElementById('filePicker');
+        const gameList = document.getElementById('game-list');
+        const iframeContainer = document.getElementById('iframe-container');
+        const gameIframe = document.getElementById('game-iframe');
+        const pauseButton = document.getElementById('pause-button');
+        const app = document.getElementById('app');
+        const loadingScreen = document.getElementById('loading-screen');
+        const logoScreen = document.getElementById('logo-screen');
+        const savedGamesKey = 'savedGames';
+
+        const logToConsole = (type, message) => {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] [${type}] ${message}`;
+            const logElement = document.createElement('div');
+            logElement.textContent = logMessage;
+            const consoleOutput = document.getElementById('console-output');
+            consoleOutput.appendChild(logElement);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        };
+
+        const checkConnection = async () => {
+            try {
+                const response = await fetch('http://cdn.cockium.cf/chr/test.txt');
+                if (!response.ok) {
+                    throw new Error('Connection failed');
+                }
+                console.log('Connection successful');
+            } catch (error) {
+                console.error('Connection error:', error);
+                alert('Connection failed. Some features may not work.');
+            } finally {
+                loadingScreen.style.display = 'none';
+                logoScreen.style.display = 'flex';
+
+                setTimeout(() => {
+                    logoScreen.style.display = 'none';
+                    app.style.display = 'block';
+                }, 3000);
+            }
+        };
+
+        const addGameCard = (name, gridIcon, gameUrl) => {
+            const gameCard = document.createElement('div');
+            gameCard.className = 'game-card';
+            gameCard.innerHTML = `
+                <img src="${gridIcon}" alt="${name} Grid Icon">
+                <h3>${name}</h3>
+                <button class="delete-button">&times;</button>
+            `;
+
+            gameCard.querySelector('.delete-button').addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteGame(name);
+            });
+
+            gameCard.addEventListener('click', () => {
+                gameIframe.src = gameUrl;
+                iframeContainer.style.display = 'flex';
+            });
+
+            gameList.appendChild(gameCard);
+        };
+
+        const deleteGame = (name) => {
+            const savedGames = JSON.parse(localStorage.getItem(savedGamesKey)) || [];
+            const updatedGames = savedGames.filter(game => game.name !== name);
+            localStorage.setItem(savedGamesKey, JSON.stringify(updatedGames));
+            renderGameList();
+        };
+
+        const renderGameList = () => {
+            gameList.innerHTML = '';
+            const savedGames = JSON.parse(localStorage.getItem(savedGamesKey)) || [];
+            savedGames.forEach(({ name, gridIcon, gameUrl }) => addGameCard(name, gridIcon, gameUrl));
+        };
+
+        pauseButton.addEventListener('click', () => {
+            iframeContainer.style.display = 'none';
+            gameIframe.src = '';
+        });
+
+        filePicker.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const content = e.target.result;
+                    const plainUrlMatch = content.match(/const defaultUrl = "(.+?)";/);
+                    if (plainUrlMatch) {
+                        const gameUrl = plainUrlMatch[1];
+                        const name = 'Game';
+                        const gridIcon = 'https://via.placeholder.com/200x150';
+                        addGameCard(name, gridIcon, gameUrl);
+                        const savedGames = JSON.parse(localStorage.getItem(savedGamesKey)) || [];
+                        savedGames.push({ name, gridIcon, gameUrl });
+                        localStorage.setItem(savedGamesKey, JSON.stringify(savedGames));
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        checkConnection();
+        renderGameList();
+    </script>
+</body>
+</html>
